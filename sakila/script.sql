@@ -128,3 +128,36 @@ WHERE cu.customer_id = SOME (
 GROUP BY ad.district
 ORDER BY n_by_dist DESC
 LIMIT 10
+
+
+-- 9.
+-- Modifique la table `inventory_id` agregando una columna `stock` que sea un número
+-- entero y representa la cantidad de copias de una misma película que tiene
+-- determinada tienda. El número por defecto debería ser 5 copias.
+
+ALTER TABLE inventory
+ADD COLUMN stock INTEGER DEFAULT 5
+
+SELECT * FROM inventory
+
+UPDATE inventory inv1
+JOIN (
+    SELECT store_id, film_id, COUNT(*) as stock_count
+    FROM inventory
+    GROUP BY store_id, film_id
+) as inv2
+ON inv1.store_id = inv2.store_id AND inv1.film_id = inv2.film_id
+SET inv1.stock = inv2.stock_count;
+
+-- Subquery: Obtener cuantas de un film_id hay en una tienda
+    SELECT store_id, film_id, COUNT(*) as stock_count
+    FROM inventory
+    GROUP BY store_id, film_id
+
+
+-- 10.
+-- Cree un trigger `update_stock` que, cada vez que se agregue un nuevo registro a la
+-- tabla rental, haga un update en la tabla `inventory` restando una copia al stock de la
+-- película rentada (Hint: revisar que el rental no tiene información directa sobre la
+-- tienda, sino sobre el cliente, que está asociado a una tienda en particular).
+
