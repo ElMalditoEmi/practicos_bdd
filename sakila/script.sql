@@ -161,14 +161,10 @@ DROP TRIGGER malditotrigger
 INSERT INTO
 rental VALUES(0,'2005-5-11',1,1,'2005-11-11',1,'2005-11-11')
 
-SELECT * FROM rental
-
-
 SELECT * FROM inventory
 
-
-INSERT INTO rental VALUES()
-
+INSERT INTO rental
+VALUES(0,'2005-5-11',1,1,'2005-11-11',1,'2005-11-11')
 
 -- 11.
 CREATE TABLE fines (
@@ -180,7 +176,6 @@ CREATE TABLE fines (
 -- 12.
 
 DELIMITER //
-
 CREATE PROCEDURE add_fine()
 BEGIN
     INSERT INTO  fines (rental_id,amount)
@@ -188,12 +183,15 @@ BEGIN
     WHERE DATEDIFF(return_date,rental_date) >= 3 ;
 END;
 //
+DELIMITER ;
 
 DROP PROCEDURE add_fine
+
 CALL add_fine()
 
+
 SELECT * FROM fines
-where amount < 0
+
 DELIMITER ;
 
 -- 13.
