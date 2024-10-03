@@ -228,3 +228,110 @@ FROM classicmodels.customers cus1
 ORDER BY total_spent DESC
 LIMIT 10
 
+-- 6. EMPLOYEE OF THE MONT
+DELIMITER //
+ 
+DROP FUNCTION IF EXISTS employee_of_the_month
+ 
+CREATE FUNCTION employee_of_the_month (mes INT, anio INT)
+RETURNS VARCHAR(10000) DETERMINISTIC
+BEGIN
+    DECLARE emp_of_the_month_ID INT;
+ 
+    SELECT `salesRepEmployeeNumber`
+    INTO emp_of_the_month_ID
+    FROM (SELECT COUNT(*) as num_sales, custs.`salesRepEmployeeNumber`
+    FROM
+        orders as ords
+        INNER JOIN customers as custs ON custs.`customerNumber` = ords.`customerNumber`
+    WHERE
+        MONTH(`orderDate`) = mes
+        AND YEAR(`orderDate`) = anio
+    GROUP BY
+        custs.`salesRepEmployeeNumber`
+    ORDER BY num_sales DESC
+    LIMIT 1) as query_emp_of_the_mont
+    ;
+ 
+    RETURN (SELECT CONCAT(employees.`firstName`,employees.`lastName`) FROM employees WHERE `employeeNumber` = emp_of_the_month_ID);
+END;
+ 
+//
+ 
+ 
+set @a = employee_of_the_month(2,2004)
+ 
+SELECT @a
+ 
+DELIMITER ;
+ 
+ 
+-- 7. 
+--Crear una nueva tabla "Product Refillment". Deberá tener una relación varios a uno con "products" y los campos: `refillmentID`, `productCode`, `orderDate`, `quantity`.
+ 
+CREATE TABLE product_refillment(
+    refillementID INT NOT NULL,
+    productCode VARCHAR(15),
+    orderDate DATE,
+    quantity INT,
+    PRIMARY KEY (refillementID),
+    FOREIGN KEY (productCode) REFERENCES products(productCode)
+)
+ 
+-- 8. Definir un trigger "Restock Product" que esté pendiente de los cambios efectuados en `orderdetails` 
+-- y cada vez que se agregue una nueva orden revise la cantidad de productos pedidos (`quantityOrdered`) 
+-- y compare con la cantidad en stock (`quantityInStock`) y si es menor a 10 genere un pedido en la tabla "Product Refillment" por 10 nuevos productos.
+DELIMITER |
+ 
+CREATE TRIGGER restock_prod AFTER INSERT ON orderdetails
+FOR EACH ROW
+BEGIN
+    DECLARE ord_date DATE;
+    DECLARE q_in_stock DATE;
+    SELECT orderDate INTO ord_date FROM orders WHERE `orderNumber` = new.orderNumber;
+ 
+    SELECT quantityInStock INTO q_in_stock FROM products WHERE `productCode` = new.`productCode`;
+ 
+    IF (new.quantityOrdered > q_in_stock -- Si se ordeno mas productos de los que se tiene
+            OR q_in_stock < 10) 
+    THEN
+        INSERT INTO product_refillment(productCode) VALUES (NEW.productCode);
+    END IF;
+ 
+END;|
+ 
+DELIMITER ;
+ 
+-- 9.
+CREATE ROLE Empleado 
+ 
+GRANT SELECT ON * TO Empleado
+ 
+GRANT CREATE VIEW ON * TO Empleado
+ 
+USE ROLE Empleado
+ 
+-- add1
+-- Encontrar, para cada cliente de aquellas ciudades que comienzan por 'N', la menor y la mayor diferencia 
+-- en días entre las fechas de sus pagos. No mostrar el id del cliente, sino su nombre y el de su contacto.
+ 
+WITH mindiff_pay_dates
+AS
+(
+    SELECT MIN(DATEDIFF(p2.paymentDate,p1.paymentDate)) as date_diff ,p1.`customerNumber` FROM payments p1, payments p2
+    WHERE p1.paymentDate < p2.paymentDate
+    AND p1.`customerNumber` = p2.`customerNumber`
+    GROUP BY p1.`customerNumber`
+),
+max_date_diff
+AS
+(
+    SELECT MAX(DATEDIFF(p2.paymentDate,p1.paymentDate)) as date_diff ,p1.`customerNumber` FROM payments p1, payments p2
+    WHERE p1.paymentDate < p2.paymentDate
+    AND p1.`customerNumber` = p2.`customerNumber`
+    GROUP BY p1.`customerNumber`
+)
+SELECT cust.`customerName`, cust.`contactFirstName`, mindiff_pay_dates.date_diff, max_date_diff.date_diff FROM customers as cust
+JOIN mindiff_pay_dates ON cust.`customerNumber` = mindiff_pay_dates.`customerNumber`
+JOIN max_date_diff ON cust.`customerNumber` = max_date_diff.`customerNumber`
+WHERE cust.city LIKE 'N%'
