@@ -380,3 +380,108 @@ db.comments.aggregate([
     }
 ]);
 
+// 12.Listar el id y nombre de los restaurantes junto con su puntuación máxima, mínima y la suma total. Se puede asumir que el restaurant_id es único.
+// a. Resolver con $group y accumulators.
+
+db.restaurants.findOne()
+
+db.restaurants.aggregate([
+    {
+        $unwind: {
+          path: "$grades",
+        }
+    },
+    {
+        $group: {
+          _id: "$_id",
+          suma: {
+            $sum: "$grades.score"
+          },
+          max: {
+            $max: "$grades.score"
+          },          
+          min: {
+            $min: "$grades.score"
+          },
+          name: {
+            $first: "$name"
+          },
+          restaurant_id: {
+            $first: "$restaurant_id"
+          }
+        }
+    },
+    {
+    $project: {
+        "restaurant_id": 1,
+        "name": 1,
+        "max": 1,
+        "min": 1,
+        "suma": 1,
+      }
+    }
+])
+
+// b.
+// Resolver con expresiones sobre arreglos (por ejemplo, $sum) pero sin $group.
+db.restaurants.aggregate([
+    {
+        $addFields: {
+          max: {
+            $max: "$grades.score"
+          },
+          min: {
+            $min: "$grades.score"
+          },
+          suma: {
+            $sum: "$grades.score"
+          }
+        }
+    },
+    {
+        $project: {
+          "restaurant_id": 1,
+          "name": 1,
+          "max": 1,
+          "min": 1,
+          "suma": 1,
+        }
+    }
+])
+
+//c. Resolver como en el punto b) pero usar $reduce para calcular la puntuación total.
+db.restaurants.aggregate([
+    {
+        $addFields: {
+          max: {
+            $max: "$grades.score"
+          },
+          min: {
+            $min: "$grades.score"
+          },
+          suma: {
+            $reduce:{
+                input: "$grades.score",
+                initialValue: { suma: 0},
+                in: {
+                    suma: {
+                        $add: ["$$value.suma","$$this"]
+                    }
+                }
+                
+            }
+          }
+        }
+    },
+    {
+        $project: {
+          "restaurant_id": 1,
+          "name": 1,
+          "max": 1,
+          "min": 1,
+          "suma": 1,
+        }
+    }
+])
+
+// 13.
