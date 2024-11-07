@@ -27,14 +27,6 @@ db.theaters.aggregate([
             }
         }
     },
-    {
-        $group: {
-            _id: null,
-            count: {
-                $sum: 1
-            }
-        },
-    },
 ])
 
 //3. Cantidad de películas dirigidas por "Louis Lumière". Se puede responder sin pipeline de agregación, realizar ambas queries.
@@ -50,7 +42,41 @@ db.movies.find(
     }
 ).count()
 
-// Falta con pipeline jeje
+
+// cc pipeline forma 1
+db.movies.aggregate([
+    {
+        $match: {
+          directors: {
+            $in : ["Louis Lumière"]
+            }
+        }
+    },
+    {
+        $count: 'cuenta'
+    }
+])
+
+// cc pipleine forma 2
+
+db.movies.aggregate([
+    {
+        $unwind: {
+          path: "$directors",
+        }
+    },
+    {
+        $match: {
+            directors: {
+                $eq: "Louis Lumière"
+            }
+        }
+    },
+    {
+        $count: 'cuenta'
+    }
+])
+
 
 //4.
 // Cantidad de películas estrenadas en los años 50 (desde 1950 hasta 1959). Se puede responder sin pipeline de agregación, realizar ambas queries.
@@ -379,6 +405,8 @@ db.comments.aggregate([
         }
     }
 ]);
+
+
 
 // 12.Listar el id y nombre de los restaurantes junto con su puntuación máxima, mínima y la suma total. Se puede asumir que el restaurant_id es único.
 // a. Resolver con $group y accumulators.
