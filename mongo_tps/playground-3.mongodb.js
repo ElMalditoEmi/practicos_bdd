@@ -509,7 +509,123 @@ db.restaurants.aggregate([
           "min": 1,
           "suma": 1,
         }
-    }
+    },
 ])
 
+//c. pero todo por reduce
+db.restaurants.aggregate([
+    {
+        $addFields: {
+            max: {
+                $reduce: {
+                    input: "$grades.score",
+                    initialValue: { max: { $arrayElemAt: ["$grades.score", 0] } },
+                    in: {
+                        max: { $max: ["$$value.max", "$$this"] }
+                    }
+                }
+            },
+            min: {
+                $reduce: {
+                    input: "$grades.score",
+                    initialValue: { min: { $arrayElemAt: ["$grades.score", 0] } },
+                    in: {
+                        min: { $min: ["$$value.min", "$$this"] }
+                    }
+                }
+            },
+            suma: {
+                $reduce: {
+                    input: "$grades.score",
+                    initialValue: { suma: 0 },
+                    in: {
+                        suma: { $add: ["$$value.suma", "$$this"] }
+                    }
+                }
+            }
+        }
+    },
+    {
+        $project: {
+            "restaurant_id": 1,
+            "name": 1,
+            "max": 1,
+            "min": 1,
+            "suma": 1,
+        }
+    },
+])
+
+// d. con find
+db.restaurants.findOne()
+db.restaurants.find({},{
+        restaurant_id: 1,
+        name: 1,
+        grade_stats: {
+            $reduce: {
+                input: "$grades",
+                initialValue: {
+                    max: -Infinity,
+                    min: Infinity,
+                    sum: 0
+                },
+                in: {
+                    max: { $max: ["$$value.max", "$$this.score"] },
+                    min: { $min: ["$$value.min", "$$this.score"] },
+                    sum: { $add: ["$$value.sum", "$$this.score"] }
+                }
+            }
+        }
+    }
+);
+
+db.restaurants.findOne({},{
+        restaurant_id: 1,
+        name: 1,
+        grade_stats: {
+            $reduce: {
+                input: "$grades",
+                initialValue: {
+                    max: { $arrayElemAt: ["$grades.score", 0] },
+                    min: { $arrayElemAt: ["$grades.score", 0] },
+                    sum: 0
+                },
+                in: {
+                    max: { $max: ["$$value.max", "$$this.score"] },
+                    min: { $min: ["$$value.min", "$$this.score"] },
+                    sum: { $add: ["$$value.sum", "$$this.score"] }
+                }
+            }
+        }
+    }
+);
+
+
 // 13.
+
+db.restaurants.findOne()
+
+db.restaurants.updateMany({}, [
+
+    {
+        $set: {
+            average_score: {
+                $avg: "$grades.score"
+            }
+        }
+    },
+    {
+        $set: {
+            grade: {
+                $switch: {
+                    branches: [
+                        { case: { $gte: ["$average_score", 28] }, then: "C" }, // Para average_score >= 28
+                        { case: { $gte: ["$average_score", 14] }, then: "B" }, // Para 14 <= average_score < 28
+                        { case: { $gte: ["$average_score", 0] }, then: "A" }, // Para 0 <= average_score < 14
+                      ],
+                    default: null, // Valor por defecto si no se cumple ninguna condición
+                }
+            }
+        }
+    }
+])
